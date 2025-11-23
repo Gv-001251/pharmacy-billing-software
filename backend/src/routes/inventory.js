@@ -11,6 +11,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/alerts/low-stock', async (req, res) => {
+  try {
+    const lowStockProducts = await Product.find({
+      $expr: { $lte: ['$quantity', '$minStockLevel'] },
+    });
+    res.json(lowStockProducts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -55,17 +66,6 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     res.json({ message: 'Product deleted' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.get('/alerts/low-stock', async (req, res) => {
-  try {
-    const lowStockProducts = await Product.find({
-      $expr: { $lte: ['$quantity', '$minStockLevel'] },
-    });
-    res.json(lowStockProducts);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
