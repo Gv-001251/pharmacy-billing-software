@@ -1,0 +1,14 @@
+version: "1"
+pipelines:
+  - name: pharmacy-backend-deploy
+    services:
+      - name: pharmacy-api
+        dockerfile: backend/Dockerfile
+        port: 5000
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          PORT: 5000
+        health-check:
+          endpoint: /health
+          interval: 30
+          timeout: 10
