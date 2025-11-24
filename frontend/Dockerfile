@@ -8,6 +8,8 @@ RUN npm ci --only=production
 
 COPY . .
 
-EXPOSE 5050
+RUN npm run build
 
-CMD ["node", "src/server.js"]
+EXPOSE 5173
+
+CMD ["npx", "serve", "dist"]
