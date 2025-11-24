@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AISHWARYA PHARMACY - Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🏥 AISHWARYA PHARMACY - Connection Test</h1>
+        <p>This page tests the connection between frontend and backend services.</p>
+        
+        <div id="backend-status" class="status warning">
+            Testing backend connection...
+        </div>
+        
+        <div id="frontend-status" class="status warning">
+            Frontend is loading...
+        </div>
+        
+        <div id="mongodb-status" class="status warning">
+            Checking MongoDB connection...
+        </div>
+        
+        <h2>Service URLs:</h2>
+        <ul>
+            <li><strong>Frontend:</strong> <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+            <li><strong>Backend API:</strong> <a href="http://localhost:5050" target="_blank">http://localhost:5050</a></li>
+            <li><strong>Health Check:</strong> <a href="http://localhost:5050/health" target="_blank">http://localhost:5050/health</a></li>
+        </ul>
+        
+        <h2>Troubleshooting Steps:</h2>
+        <ol>
+            <li>Make sure MongoDB is running: <code>docker ps | grep mongo</code></li>
+            <li>Start backend: <code>cd backend && npm start</code></li>
+            <li>Start frontend: <code>cd frontend && npm run dev</code></li>
+            <li>Check if ports 3000 and 5050 are available</li>
+        </ol>
+    </div>
+
+    <script>
+        // Test backend connection
+        async function testBackend() {
+            const statusEl = document.getElementById('backend-status');
+            try {
+                const response = await fetch('http://localhost:5050/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = `✅ Backend is connected! Status: ${data.status}`;
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.innerHTML = '❌ Backend responded with error';
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.innerHTML = `❌ Backend connection failed: ${error.message}`;
+            }
+        }
+
+        // Test frontend
+        function testFrontend() {
+            const statusEl = document.getElementById('frontend-status');
+            statusEl.className = 'status success';
+            statusEl.innerHTML = '✅ Frontend test page is loading correctly';
+        }
+
+        // Test MongoDB (indirectly through backend)
+        async function testMongoDB() {
+            const statusEl = document.getElementById('mongodb-status');
+            try {
+                const response = await fetch('http://localhost:5050/');
+                if (response.ok) {
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '✅ Backend is running (MongoDB likely connected)';
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.innerHTML = '❌ Backend not responding properly';
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.innerHTML = `❌ Cannot reach backend: ${error.message}`;
+            }
+        }
+
+        // Run tests
+        testFrontend();
+        setTimeout(testBackend, 1000);
+        setTimeout(testMongoDB, 2000);
+
+        // Auto-refresh every 10 seconds
+        setInterval(() => {
+            testBackend();
+            testMongoDB();
+        }, 10000);
+    </script>
+</body>
+</html>

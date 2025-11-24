@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { pharmacyAPI } from '../services/api'
 
 const Billing = () => {
   const [customerName, setCustomerName] = useState('')
@@ -137,7 +138,7 @@ const Billing = () => {
     return medicines.reduce((total, med) => parseFloat(med.amount) || 0, 0)
   }
 
-  const handleSaveAndPrint = () => {
+  const handleSaveAndPrint = async () => {
     // Validate customer phone
     if (customerPhone && !validatePhone(customerPhone)) {
       setPhoneError('Please enter a valid mobile number')
@@ -151,28 +152,37 @@ const Billing = () => {
       return
     }
 
-    // Show success animation
-    setShowSuccess(true)
-    setTimeout(() => {
-      setShowSuccess(false)
-    }, 2000)
-
-    // Here you would typically save to backend and trigger print
-    console.log('Bill saved:', {
+    const billData = {
       customer: { name: customerName, phone: customerPhone },
       medicines: medicines.filter(med => med.name.trim() !== ''),
-      payment: paymentMode,
       totals: {
         subtotal: calculateSubtotal(),
         gst: calculateGST(),
         total: calculateTotal()
-      }
-    })
+      },
+      paymentMode
+    }
 
-    // Reset form after successful save
-    setTimeout(() => {
-      resetForm()
-    }, 1000)
+    try {
+      // Save to backend
+      const response = await pharmacyAPI.billing.create(billData)
+      
+      // Show success animation
+      setShowSuccess(true)
+      setTimeout(() => {
+        setShowSuccess(false)
+      }, 2000)
+
+      console.log('Bill saved successfully:', response.data)
+
+      // Reset form after successful save
+      setTimeout(() => {
+        resetForm()
+      }, 1000)
+    } catch (error) {
+      console.error('Error saving bill:', error)
+      alert('Error saving bill. Please check if the backend is running and try again.')
+    }
   }
 
   const resetForm = () => {
