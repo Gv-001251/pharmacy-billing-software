@@ -1,6 +1,75 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { pharmacyAPI } from '../services/api'
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    todaySales: 0,
+    billsCreated: 0,
+    lowStockItems: 0,
+    expiringSoon: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true)
+        // For now, we'll use mock data since the backend endpoints might need to be implemented
+        // In a real implementation, you would fetch from the backend:
+        // const billsResponse = await pharmacyAPI.billing.getAll()
+        // const inventoryResponse = await pharmacyAPI.inventory.lowStock()
+        
+        // Mock data for demonstration
+        setTimeout(() => {
+          setStats({
+            todaySales: 12450,
+            billsCreated: 24,
+            lowStockItems: 8,
+            expiringSoon: 3
+          })
+          setLoading(false)
+        }, 1000)
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+        setError('Failed to load dashboard data')
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{ 
+        background: 'white', 
+        padding: '30px', 
+        borderRadius: '16px', 
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <h2>Loading dashboard...</h2>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ 
+        background: 'white', 
+        padding: '30px', 
+        borderRadius: '16px', 
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <h2>Error</h2>
+        <p>{error}</p>
+        <p>Please check if the backend is running.</p>
+      </div>
+    )
+  }
+
   return (
     <div style={{ 
       background: 'white', 
@@ -23,7 +92,7 @@ const Dashboard = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>₹12,450</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>₹{stats.todaySales.toLocaleString()}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Today's Sales</div>
         </div>
         
@@ -34,7 +103,7 @@ const Dashboard = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>24</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.billsCreated}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Bills Created</div>
         </div>
         
@@ -45,7 +114,7 @@ const Dashboard = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>8</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.lowStockItems}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Low Stock Items</div>
         </div>
         
@@ -56,7 +125,7 @@ const Dashboard = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>3</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.expiringSoon}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Expiring Soon</div>
         </div>
       </div>

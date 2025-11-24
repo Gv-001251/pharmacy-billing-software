@@ -1,12 +1,36 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Billing from './components/Billing'
 import Dashboard from './components/Dashboard'
 import Purchase from './components/Purchase'
 import StockAlert from './components/StockAlert'
+import { pharmacyAPI } from './services/api'
 import './index.css'
 
 function App() {
   const [activeTab, setActiveTab] = useState('billing')
+  const [backendStatus, setBackendStatus] = useState('checking') // 'checking', 'connected', 'error'
+
+  useEffect(() => {
+    const checkBackendConnection = async () => {
+      try {
+        const response = await pharmacyAPI.healthCheck()
+        if (response.status === 200) {
+          setBackendStatus('connected')
+          console.log('✅ Backend connected successfully')
+        }
+      } catch (error) {
+        setBackendStatus('error')
+        console.error('❌ Backend connection failed:', error.message)
+      }
+    }
+
+    checkBackendConnection()
+    
+    // Check connection every 30 seconds
+    const interval = setInterval(checkBackendConnection, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   const renderActiveComponent = () => {
     switch(activeTab) {
@@ -40,6 +64,22 @@ function App() {
           </div>
           <div className="gst-info">
             <div>GSTIN: 33AAAPL1234C1ZV</div>
+            <div style={{ 
+              marginTop: '10px', 
+              fontSize: '12px',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              backgroundColor: backendStatus === 'connected' ? 'rgba(39, 174, 96, 0.2)' : 
+                              backendStatus === 'error' ? 'rgba(231, 76, 60, 0.2)' : 
+                              'rgba(241, 196, 15, 0.2)',
+              color: backendStatus === 'connected' ? '#27ae60' : 
+                     backendStatus === 'error' ? '#e74c3c' : 
+                     '#f1c40f'
+            }}>
+              {backendStatus === 'connected' ? '🟢 Backend Connected' : 
+               backendStatus === 'error' ? '🔴 Backend Offline' : 
+               '🟡 Checking Backend...'}
+            </div>
           </div>
         </div>
       </header>
