@@ -1,0 +1,8 @@
+version: "1"
+pipelines:
+  - name: pharmacy-frontend-deploy
+    services:
+      - name: pharmacy-ui
+        dockerfile: Dockerfile
+        port: 5173
+        static: true

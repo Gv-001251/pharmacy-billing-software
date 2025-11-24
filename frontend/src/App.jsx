@@ -34,7 +34,7 @@ function App() {
             </div>
             <div>
               <div className="pharmacy-name">AISHWARYA PHARMACY</div>
-              <div className="contact-info">📞 9952506050</div>
+              <div className="contact-info">PH.no - 9952506050</div>
               <div className="pharmacy-address">123 Main Street, City - 600001</div>
             </div>
           </div>
@@ -80,7 +80,7 @@ function App() {
       {/* Footer */}
       <footer className="footer">
         <div className="footer-text">Thank you for choosing AISHWARYA PHARMACY</div>
-        <div className="footer-contact">📞 9952506050</div>
+        <div className="footer-contact">PH.no - 9952506050</div>
       </footer>
     </div>
   )

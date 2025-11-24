@@ -3,7 +3,7 @@ pipelines:
   - name: pharmacy-backend-deploy
     services:
       - name: pharmacy-api
-        dockerfile: backend/Dockerfile
+        dockerfile: Dockerfile
         port: 5050
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
@@ -12,10 +12,3 @@ pipelines:
           endpoint: /health
           interval: 30
           timeout: 10
-  
-  - name: pharmacy-frontend-deploy
-    services:
-      - name: pharmacy-ui
-        dockerfile: frontend/Dockerfile
-        port: 5173
-        static: true
