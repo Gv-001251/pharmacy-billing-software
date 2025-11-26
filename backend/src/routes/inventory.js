@@ -92,6 +92,40 @@ router.get('/alerts/stock', async (req, res) => {
   }
 });
 
+router.get('/search', async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+    
+    const products = await Product.find({
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { batch: { $regex: q, $options: 'i' } }
+      ]
+    })
+    .select('name batch mrp gst manufacturer')
+    .limit(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: products
+    });
+  } catch (error) {
+    console.error('Error searching products:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching products',
+      error: error.message
+    });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -167,6 +201,41 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting product',
+      error: error.message
+    });
+  }
+});
+
+// Search endpoint for autocomplete suggestions
+router.get('/search', async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+    
+    const products = await Product.find({
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { batch: { $regex: q, $options: 'i' } }
+      ]
+    })
+    .select('name batch mrp gst manufacturer')
+    .limit(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: products
+    });
+  } catch (error) {
+    console.error('Error searching products:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching products',
       error: error.message
     });
   }

@@ -59,7 +59,8 @@ export const pharmacyAPI = {
     create: (item) => api.post('/api/inventory', item),
     update: (id, item) => api.put(`/api/inventory/${id}`, item),
     delete: (id) => api.delete(`/api/inventory/${id}`),
-    lowStock: () => api.get('/api/inventory/low-stock')
+    lowStock: () => api.get('/api/inventory/low-stock'),
+    search: (query) => api.get(`/api/inventory/search?q=${encodeURIComponent(query)}`)
   },
   
   // Purchase endpoints
