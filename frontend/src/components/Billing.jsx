@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { pharmacyAPI } from '../services/api'
 
 const Billing = () => {
@@ -19,24 +19,22 @@ const Billing = () => {
   ])
   const [showSuccess, setShowSuccess] = useState(false)
 
-  // Sample medicine data for autocomplete
-  const medicineSuggestions = [
-    'Paracetamol 500mg',
-    'Azithromycin 250mg',
-    'Amoxicillin 500mg',
-    'Ibuprofen 400mg',
-    'Cetirizine 10mg',
-    'Omeprazole 20mg',
-    'Metformin 500mg',
-    'Aspirin 75mg',
-    'Vitamin D3 1000 IU',
-    'Cough Syrup 100ml'
-  ]
-
   // Auto-complete functionality
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [currentEditingId, setCurrentEditingId] = useState(null)
   const [filteredSuggestions, setFilteredSuggestions] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState('')
+  const searchTimeoutRef = useRef(null)
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Validate Indian mobile number
   const validatePhone = (phone) => {
@@ -75,26 +73,79 @@ const Billing = () => {
     setMedicines(updatedMedicines)
   }
 
-  const handleMedicineNameChange = (id, value) => {
-    handleMedicineChange(id, 'name', value)
+  // Fetch medicine suggestions from backend
+  const fetchMedicineSuggestions = async (searchTerm) => {
+    if (searchTerm.length < 2) {
+      setFilteredSuggestions([])
+      return
+    }
+
+    setLoadingSuggestions(true)
+    setSuggestionsError('')
     
-    // Handle autocomplete
-    setCurrentEditingId(id)
-    if (value.length > 0) {
-      const filtered = medicineSuggestions.filter(med => 
-        med.toLowerCase().includes(value.toLowerCase())
-      )
-      setFilteredSuggestions(filtered)
-      setShowSuggestions(true)
-    } else {
-      setShowSuggestions(false)
+    try {
+      const response = await pharmacyAPI.inventory.search(searchTerm)
+      if (response.data.success) {
+        setFilteredSuggestions(response.data.data)
+      } else {
+        setSuggestionsError('Failed to fetch suggestions')
+        setFilteredSuggestions([])
+      }
+    } catch (error) {
+      console.error('Error fetching medicine suggestions:', error)
+      setSuggestionsError('Error loading suggestions')
+      setFilteredSuggestions([])
+    } finally {
+      setLoadingSuggestions(false)
     }
   }
 
-  const selectSuggestion = (medicineName) => {
-    handleMedicineChange(currentEditingId, 'name', medicineName)
+  const handleMedicineNameChange = (id, value) => {
+    handleMedicineChange(id, 'name', value)
+    
+    // Handle autocomplete with debouncing
+    setCurrentEditingId(id)
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    if (value.length > 0) {
+      setShowSuggestions(true)
+      
+      // Set a timeout to debounce the API call
+      searchTimeoutRef.current = setTimeout(() => {
+        fetchMedicineSuggestions(value)
+      }, 300)
+    } else {
+      setShowSuggestions(false)
+      setFilteredSuggestions([])
+    }
+  }
+
+  const selectSuggestion = (medicine) => {
+    handleMedicineChange(currentEditingId, 'name', medicine.name)
+    handleMedicineChange(currentEditingId, 'batch', medicine.batch || '')
+    handleMedicineChange(currentEditingId, 'mrp', medicine.mrp || 0)
+    handleMedicineChange(currentEditingId, 'gst', medicine.gst || 0)
     setShowSuggestions(false)
     setCurrentEditingId(null)
+    setFilteredSuggestions([])
+    
+    // Recalculate amount with new values
+    const updatedMedicines = medicines.map(med => {
+      if (med.id === currentEditingId) {
+        const qty = parseFloat(med.quantity) || 1
+        const price = parseFloat(medicine.mrp) || 0
+        const gstPercent = parseFloat(medicine.gst) || 0
+        const baseAmount = qty * price
+        const gstAmount = baseAmount * (gstPercent / 100)
+        return { ...med, name: medicine.name, batch: medicine.batch || '', mrp: medicine.mrp || 0, gst: medicine.gst || 0, amount: baseAmount + gstAmount }
+      }
+      return med
+    })
+    setMedicines(updatedMedicines)
   }
 
   const addMedicineRow = () => {
@@ -295,7 +346,7 @@ const Billing = () => {
                     data-field="name"
                     onKeyDown={(e) => handleKeyDown(e, index, 'name')}
                   />
-                  {showSuggestions && currentEditingId === medicine.id && filteredSuggestions.length > 0 && (
+                  {showSuggestions && currentEditingId === medicine.id && (
                     <div style={{
                       position: 'absolute',
                       top: '100%',
@@ -305,25 +356,71 @@ const Billing = () => {
                       border: '1px solid #e1e8ed',
                       borderTop: 'none',
                       borderRadius: '0 0 6px 6px',
-                      maxHeight: '200px',
+                      maxHeight: '250px',
                       overflowY: 'auto',
                       zIndex: 1000,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                     }}>
+                      {loadingSuggestions && (
+                        <div style={{
+                          padding: '12px',
+                          textAlign: 'center',
+                          color: '#667eea',
+                          fontSize: '14px'
+                        }}>
+                          Loading suggestions...
+                        </div>
+                      )}
+                      
+                      {suggestionsError && (
+                        <div style={{
+                          padding: '12px',
+                          textAlign: 'center',
+                          color: '#e74c3c',
+                          fontSize: '14px'
+                        }}>
+                          {suggestionsError}
+                        </div>
+                      )}
+                      
+                      {!loadingSuggestions && !suggestionsError && filteredSuggestions.length === 0 && medicine.name.length >= 2 && (
+                        <div style={{
+                          padding: '12px',
+                          textAlign: 'center',
+                          color: '#666',
+                          fontSize: '14px'
+                        }}>
+                          No medicines found
+                        </div>
+                      )}
+                      
                       {filteredSuggestions.map((suggestion, idx) => (
                         <div
                           key={idx}
                           style={{
-                            padding: '8px 12px',
+                            padding: '10px 12px',
                             cursor: 'pointer',
                             fontSize: '14px',
-                            borderBottom: '1px solid #f1f3f4'
+                            borderBottom: '1px solid #f1f3f4',
+                            backgroundColor: idx === 0 ? '#f8f9fa' : 'white'
                           }}
                           onClick={() => selectSuggestion(suggestion)}
-                          onMouseEnter={(e) => e.target.style.background = '#f8f9fa'}
-                          onMouseLeave={(e) => e.target.style.background = 'white'}
+                          onMouseEnter={(e) => e.target.style.background = '#f0f7ff'}
+                          onMouseLeave={(e) => e.target.style.background = idx === 0 ? '#f8f9fa' : 'white'}
                         >
-                          {suggestion}
+                          <div style={{ fontWeight: '600', color: '#2c3e50', marginBottom: '2px' }}>
+                            {suggestion.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Batch: {suggestion.batch || 'N/A'}</span>
+                            <span>MRP: ₹{suggestion.mrp || 0}</span>
+                            <span>GST: {suggestion.gst || 0}%</span>
+                          </div>
+                          {suggestion.manufacturer && (
+                            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
+                              {suggestion.manufacturer}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
