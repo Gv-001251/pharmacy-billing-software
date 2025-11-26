@@ -15,21 +15,38 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true)
-        // For now, we'll use mock data since the backend endpoints might need to be implemented
-        // In a real implementation, you would fetch from the backend:
-        // const billsResponse = await pharmacyAPI.billing.getAll()
-        // const inventoryResponse = await pharmacyAPI.inventory.lowStock()
         
-        // Mock data for demonstration
-        setTimeout(() => {
-          setStats({
-            todaySales: 12450,
-            billsCreated: 24,
-            lowStockItems: 8,
-            expiringSoon: 3
-          })
-          setLoading(false)
-        }, 1000)
+        // Fetch real data from backend
+        const [billsResponse, lowStockResponse] = await Promise.all([
+          pharmacyAPI.billing.getAll({ limit: 1000 }),
+          pharmacyAPI.inventory.lowStock()
+        ])
+        
+        const bills = billsResponse.data.data || []
+        const lowStockItems = lowStockResponse.data.data || []
+        
+        // Calculate today's sales
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        
+        const todayBills = bills.filter(bill => {
+          const billDate = new Date(bill.createdAt)
+          return billDate >= today && billDate < tomorrow
+        })
+        
+        const todaySales = todayBills.reduce((sum, bill) => {
+          return sum + (bill.totals?.total || 0)
+        }, 0)
+        
+        setStats({
+          todaySales,
+          billsCreated: todayBills.length,
+          lowStockItems: lowStockItems.length,
+          expiringSoon: 0 // Will implement this later
+        })
+        setLoading(false)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         setError('Failed to load dashboard data')

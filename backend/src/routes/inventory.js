@@ -63,6 +63,26 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/low-stock', async (req, res) => {
+  try {
+    const lowStockItems = await Product.find({
+      $expr: { $lte: ['$quantity', '$minStockLevel'] }
+    });
+    
+    res.json({
+      success: true,
+      data: lowStockItems
+    });
+  } catch (error) {
+    console.error('Error fetching low stock items:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching low stock items',
+      error: error.message
+    });
+  }
+});
+
 router.get('/alerts/stock', async (req, res) => {
   try {
     const lowStockItems = await Product.find({

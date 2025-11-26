@@ -1,19 +1,50 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { pharmacyAPI } from '../services/api'
 
 const StockAlert = () => {
-  const alerts = [
-    { id: 1, medicine: 'Paracetamol 500mg', stock: 15, minStock: 50, status: 'critical' },
-    { id: 2, medicine: 'Azithromycin 250mg', stock: 8, minStock: 20, status: 'critical' },
-    { id: 3, medicine: 'Amoxicillin 500mg', stock: 25, minStock: 30, status: 'warning' },
-    { id: 4, medicine: 'Cetirizine 10mg', stock: 45, minStock: 50, status: 'warning' },
-    { id: 5, medicine: 'Vitamin D3 1000 IU', stock: 12, minStock: 40, status: 'critical' }
-  ]
+  const [alerts, setAlerts] = useState([])
+  const [expiringSoon, setExpiringSoon] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const expiringSoon = [
-    { id: 1, medicine: 'Ibuprofen 400mg', batch: 'B001', expiryDate: '2024-02-15', daysLeft: 30 },
-    { id: 2, medicine: 'Omeprazole 20mg', batch: 'B002', expiryDate: '2024-01-20', daysLeft: 5 },
-    { id: 3, medicine: 'Cough Syrup 100ml', batch: 'B003', expiryDate: '2024-03-01', daysLeft: 45 }
-  ]
+  useEffect(() => {
+    const fetchAlertData = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch low stock items
+        const lowStockResponse = await pharmacyAPI.inventory.lowStock()
+        const lowStockItems = lowStockResponse.data.data || []
+        
+        // Transform low stock data for display
+        const transformedAlerts = lowStockItems.map(item => ({
+          id: item._id,
+          medicine: item.name,
+          stock: item.quantity,
+          minStock: item.minStockLevel,
+          status: item.quantity <= item.minStockLevel / 2 ? 'critical' : 'warning'
+        }))
+        
+        setAlerts(transformedAlerts)
+        
+        // TODO: Implement expiring soon functionality
+        // For now, using mock data for expiring items
+        setExpiringSoon([
+          { id: 1, medicine: 'Ibuprofen 400mg', batch: 'B001', expiryDate: '2024-02-15', daysLeft: 30 },
+          { id: 2, medicine: 'Omeprazole 20mg', batch: 'B002', expiryDate: '2024-01-20', daysLeft: 5 },
+          { id: 3, medicine: 'Cough Syrup 100ml', batch: 'B003', expiryDate: '2024-03-01', daysLeft: 45 }
+        ])
+        
+        setLoading(false)
+      } catch (error) {
+        console.error('Error fetching alert data:', error)
+        setError('Failed to load alert data')
+        setLoading(false)
+      }
+    }
+
+    fetchAlertData()
+  }, [])
 
   const getStatusColor = (status) => {
     return status === 'critical' ? '#e74c3c' : '#f39c12'
@@ -23,6 +54,36 @@ const StockAlert = () => {
     if (days <= 15) return '#e74c3c'
     if (days <= 30) return '#f39c12'
     return '#27ae60'
+  }
+
+  if (loading) {
+    return (
+      <div style={{ 
+        background: 'white', 
+        padding: '30px', 
+        borderRadius: '16px', 
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <h2>Loading stock alerts...</h2>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ 
+        background: 'white', 
+        padding: '30px', 
+        borderRadius: '16px', 
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <h2>Error</h2>
+        <p>{error}</p>
+        <p>Please check if the backend is running.</p>
+      </div>
+    )
   }
 
   return (
@@ -47,7 +108,7 @@ const StockAlert = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>5</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{alerts.length}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Low Stock Items</div>
         </div>
         
@@ -58,7 +119,7 @@ const StockAlert = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>3</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{expiringSoon.length}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Expiring Soon</div>
         </div>
       </div>
