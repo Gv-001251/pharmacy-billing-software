@@ -1,19 +1,60 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { pharmacyAPI } from '../services/api'
 
 const StockAlert = () => {
-  const alerts = [
-    { id: 1, medicine: 'Paracetamol 500mg', stock: 15, minStock: 50, status: 'critical' },
-    { id: 2, medicine: 'Azithromycin 250mg', stock: 8, minStock: 20, status: 'critical' },
-    { id: 3, medicine: 'Amoxicillin 500mg', stock: 25, minStock: 30, status: 'warning' },
-    { id: 4, medicine: 'Cetirizine 10mg', stock: 45, minStock: 50, status: 'warning' },
-    { id: 5, medicine: 'Vitamin D3 1000 IU', stock: 12, minStock: 40, status: 'critical' }
-  ]
+  const [lowStockItems, setLowStockItems] = useState([])
+  const [expiringSoon, setExpiringSoon] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const expiringSoon = [
-    { id: 1, medicine: 'Ibuprofen 400mg', batch: 'B001', expiryDate: '2024-02-15', daysLeft: 30 },
-    { id: 2, medicine: 'Omeprazole 20mg', batch: 'B002', expiryDate: '2024-01-20', daysLeft: 5 },
-    { id: 3, medicine: 'Cough Syrup 100ml', batch: 'B003', expiryDate: '2024-03-01', daysLeft: 45 }
-  ]
+  useEffect(() => {
+    const fetchStockData = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch low stock items
+        const lowStockResponse = await pharmacyAPI.inventory.lowStock()
+        setLowStockItems(lowStockResponse.data.data || [])
+        
+        // For expiring soon items, we'll need to fetch all inventory and filter
+        const inventoryResponse = await pharmacyAPI.inventory.getAll()
+        const allItems = inventoryResponse.data.data || []
+        
+        // Calculate items expiring in next 60 days
+        const sixtyDaysFromNow = new Date()
+        sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 60)
+        
+        const expiringItems = allItems
+          .filter(item => item.expiryDate)
+          .filter(item => {
+            const expiryDate = new Date(item.expiryDate)
+            const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24))
+            return daysLeft > 0 && daysLeft <= 60
+          })
+          .map(item => ({
+            id: item._id,
+            medicine: item.name,
+            batch: item.batch,
+            expiryDate: new Date(item.expiryDate).toISOString().split('T')[0],
+            daysLeft: Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))
+          }))
+          .sort((a, b) => a.daysLeft - b.daysLeft)
+        
+        setExpiringSoon(expiringItems)
+        setLoading(false)
+      } catch (error) {
+        console.error('Error fetching stock data:', error)
+        setError('Failed to load stock alerts')
+        setLoading(false)
+      }
+    }
+
+    fetchStockData()
+    
+    // Refresh data every 5 minutes
+    const interval = setInterval(fetchStockData, 300000)
+    return () => clearInterval(interval)
+  }, [])
 
   const getStatusColor = (status) => {
     return status === 'critical' ? '#e74c3c' : '#f39c12'
@@ -23,6 +64,35 @@ const StockAlert = () => {
     if (days <= 15) return '#e74c3c'
     if (days <= 30) return '#f39c12'
     return '#27ae60'
+  }
+
+  if (loading) {
+    return (
+      <div style={{ 
+        background: 'white', 
+        padding: '30px', 
+        borderRadius: '16px', 
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <h2>Loading stock alerts...</h2>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ 
+        background: 'white', 
+        padding: '30px', 
+        borderRadius: '16px', 
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <h2>Error</h2>
+        <p>{error}</p>
+      </div>
+    )
   }
 
   return (
@@ -47,7 +117,7 @@ const StockAlert = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>5</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{lowStockItems.length}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Low Stock Items</div>
         </div>
         
@@ -58,7 +128,7 @@ const StockAlert = () => {
           borderRadius: '12px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>3</div>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{expiringSoon.length}</div>
           <div style={{ fontSize: '16px', opacity: 0.9 }}>Expiring Soon</div>
         </div>
       </div>
@@ -82,45 +152,53 @@ const StockAlert = () => {
               </tr>
             </thead>
             <tbody>
-              {alerts.map(alert => (
-                <tr key={alert.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                  <td style={{ padding: '15px', fontWeight: '500' }}>{alert.medicine}</td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                    <span style={{ 
-                      color: alert.stock < alert.minStock / 2 ? '#e74c3c' : '#f39c12',
-                      fontWeight: 'bold'
-                    }}>
-                      {alert.stock}
-                    </span>
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>{alert.minStock}</td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                    <span style={{
-                      background: getStatusColor(alert.status),
-                      color: 'white',
-                      padding: '4px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}>
-                      {alert.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                    <button style={{
-                      background: '#667eea',
-                      color: 'white',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '12px'
-                    }}>
-                      Order Now
-                    </button>
+              {lowStockItems.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>
+                    ✅ No low stock items found
                   </td>
                 </tr>
-              ))}
+              ) : (
+                lowStockItems.map(item => (
+                  <tr key={item._id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                    <td style={{ padding: '15px', fontWeight: '500' }}>{item.name}</td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <span style={{ 
+                        color: item.quantity < item.minStockLevel / 2 ? '#e74c3c' : '#f39c12',
+                        fontWeight: 'bold'
+                      }}>
+                        {item.quantity}
+                      </span>
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>{item.minStockLevel}</td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <span style={{
+                        background: item.quantity < item.minStockLevel / 2 ? '#e74c3c' : '#f39c12',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        {item.quantity < item.minStockLevel / 2 ? 'CRITICAL' : 'WARNING'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <button style={{
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}>
+                        Order Now
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -146,34 +224,42 @@ const StockAlert = () => {
               </tr>
             </thead>
             <tbody>
-              {expiringSoon.map(item => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #fdeaa8' }}>
-                  <td style={{ padding: '12px', fontWeight: '500' }}>{item.medicine}</td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>{item.batch}</td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>{item.expiryDate}</td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <span style={{
-                      color: getDaysLeftColor(item.daysLeft),
-                      fontWeight: 'bold'
-                    }}>
-                      {item.daysLeft} days
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <button style={{
-                      background: '#e74c3c',
-                      color: 'white',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '12px'
-                    }}>
-                      Return/Sell
-                    </button>
+              {expiringSoon.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>
+                    ✅ No items expiring in the next 60 days
                   </td>
                 </tr>
-              ))}
+              ) : (
+                expiringSoon.map(item => (
+                  <tr key={item.id} style={{ borderBottom: '1px solid #fdeaa8' }}>
+                    <td style={{ padding: '12px', fontWeight: '500' }}>{item.medicine}</td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>{item.batch}</td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>{item.expiryDate}</td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <span style={{
+                        color: getDaysLeftColor(item.daysLeft),
+                        fontWeight: 'bold'
+                      }}>
+                        {item.daysLeft} days
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <button style={{
+                        background: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}>
+                        Return/Sell
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
