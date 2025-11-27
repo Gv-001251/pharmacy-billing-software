@@ -53,10 +53,11 @@ router.get('/', async (req, res) => {
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
     
-    const bills = await Bill.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+    const bills = await Bill.find({
+      ...query,
+      limit: parseInt(limit),
+      skip: (parseInt(page) - 1) * parseInt(limit)
+    });
     
     const total = await Bill.countDocuments(query);
     
@@ -82,20 +83,11 @@ router.get('/', async (req, res) => {
 
 router.get('/stats/summary', async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todaySales = await Bill.aggregate([
-      { $match: { createdAt: { $gte: today } } },
-      { $group: { _id: null, total: { $sum: '$totals.total' }, count: { $sum: 1 } } }
-    ]);
+    const stats = await Bill.getStats();
     
     res.json({
       success: true,
-      data: {
-        todaysSales: todaySales[0]?.total || 0,
-        todaysBills: todaySales[0]?.count || 0
-      }
+      data: stats
     });
   } catch (error) {
     console.error('Error fetching stats:', error);

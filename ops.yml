@@ -6,7 +6,11 @@ pipelines:
         dockerfile: backend/Dockerfile
         port: 5050
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+          MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
           PORT: 5050
         health-check:
           endpoint: /health
