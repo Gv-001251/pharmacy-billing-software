@@ -19,24 +19,28 @@ check_service() {
     fi
 }
 
-# Start MongoDB
-echo "🍃 Starting MongoDB..."
-if docker ps | grep -q "pharmacy-mongo"; then
-    echo "MongoDB container already exists, starting it..."
-    docker start pharmacy-mongo
+# Start MySQL
+echo "🐬 Starting MySQL..."
+if docker ps | grep -q "pharmacy-mysql"; then
+    echo "MySQL container already exists, starting it..."
+    docker start pharmacy-mysql
 else
-    echo "Creating new MongoDB container..."
-    docker run -d --name pharmacy-mongo -p 27017:27017 mongo:latest
+    echo "Creating new MySQL container..."
+    docker run -d --name pharmacy-mysql \
+        -p 3306:3306 \
+        -e MYSQL_ROOT_PASSWORD=pharmacy123 \
+        -e MYSQL_DATABASE=pharmacy \
+        mysql:8.0
 fi
 
-# Wait for MongoDB to start
-echo "Waiting for MongoDB to initialize..."
-sleep 5
+# Wait for MySQL to start
+echo "Waiting for MySQL to initialize..."
+sleep 10
 
-if docker ps | grep -q "pharmacy-mongo"; then
-    echo "✅ MongoDB is running"
+if docker ps | grep -q "pharmacy-mysql"; then
+    echo "✅ MySQL is running"
 else
-    echo "❌ Failed to start MongoDB"
+    echo "❌ Failed to start MySQL"
     exit 1
 fi
 
@@ -99,7 +103,7 @@ fi
 echo ""
 echo "🎉 Services Status:"
 echo "=================="
-check_service "MongoDB" 27017 "http://localhost:27017"
+check_service "MySQL" 3306 "http://localhost:3306"
 check_service "Backend API" 5050 "http://localhost:5050/health"
 
 echo ""
@@ -115,7 +119,7 @@ echo "🔧 Troubleshooting:"
 echo ""
 echo "If the frontend shows a blank page:"
 echo "1. Check browser console for errors (F12 -> Console)"
-echo "2. Make sure MongoDB is running: docker ps | grep pharmacy-mongo"
+echo "2. Make sure MySQL is running: docker ps | grep pharmacy-mysql"
 echo "3. Check logs: tail -f /home/engine/project/backend.log"
 echo "4. Check logs: tail -f /home/engine/project/frontend.log"
 
@@ -124,7 +128,7 @@ echo "💡 To stop services:"
 echo "==================="
 echo "Stop frontend: pkill -f 'vite'"
 echo "Stop backend: pkill -f 'node src/server.js'"
-echo "Stop MongoDB: docker stop pharmacy-mongo"
+echo "Stop MySQL: docker stop pharmacy-mysql"
 
 echo ""
 echo "🎯 Ready to use! Open http://localhost:3000 in your browser."

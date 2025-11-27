@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const { connectDB } = require('./db');
 const Product = require('./models/Product');
 require('dotenv').config();
 
@@ -367,19 +367,24 @@ const addExpiryDates = (medicines) => {
 
 const seedDatabase = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    await connectDB();
+    console.log('Connected to MySQL');
 
     // Clear existing products
-    await Product.deleteMany({});
+    const connection = require('./db').getConnection();
+    await connection.execute('DELETE FROM products');
     console.log('Cleared existing products');
 
     // Add expiry dates to medicines
     const medicinesWithExpiry = addExpiryDates(medicines);
 
     // Insert medicines
-    const insertedMedicines = await Product.insertMany(medicinesWithExpiry);
-    console.log(`Successfully inserted ${insertedMedicines.length} medicines`);
+    let insertedCount = 0;
+    for (const medicine of medicinesWithExpiry) {
+      await Product.create(medicine);
+      insertedCount++;
+    }
+    console.log(`Successfully inserted ${insertedCount} medicines`);
 
     console.log('Database seeded successfully!');
     console.log('Sample medicines include:');
@@ -394,9 +399,6 @@ const seedDatabase = async () => {
 
   } catch (error) {
     console.error('Error seeding database:', error);
-  } finally {
-    await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
   }
 };
 

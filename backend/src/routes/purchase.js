@@ -7,18 +7,18 @@ router.post('/', async (req, res) => {
   try {
     const { items } = req.body;
 
-    const purchaseOrder = new PurchaseOrder(req.body);
-    await purchaseOrder.save();
+    const purchaseOrder = await PurchaseOrder.create(req.body);
 
     if (items && items.length) {
       for (const item of items) {
         const product = await Product.findOne({ name: item.name, batch: item.batch });
 
         if (product) {
-          product.quantity += item.quantity;
-          product.costPrice = item.costPrice;
-          product.expiryDate = item.expiryDate || product.expiryDate;
-          await product.save();
+          await Product.updateById(product.id, {
+            quantity: product.quantity + item.quantity,
+            costPrice: item.costPrice,
+            expiryDate: item.expiryDate || product.expiryDate
+          });
         } else {
           await Product.create({
             name: item.name,
@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const purchaseOrders = await PurchaseOrder.find().sort({ createdAt: -1 });
+    const purchaseOrders = await PurchaseOrder.find();
     res.json({
       success: true,
       data: purchaseOrders
