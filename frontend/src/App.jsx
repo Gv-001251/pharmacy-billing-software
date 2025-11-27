@@ -7,8 +7,9 @@ import { pharmacyAPI } from './services/api'
 import './index.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('billing')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [backendStatus, setBackendStatus] = useState('checking') // 'checking', 'connected', 'error'
+  const [currentDate, setCurrentDate] = useState('')
 
   useEffect(() => {
     const checkBackendConnection = async () => {
@@ -32,6 +33,13 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    // Set current date in DD MMM YYYY format
+    const today = new Date()
+    const options = { day: '2-digit', month: 'short', year: 'numeric' }
+    setCurrentDate(today.toLocaleDateString('en-GB', options))
+  }, [])
+
   const renderActiveComponent = () => {
     switch(activeTab) {
       case 'billing':
@@ -43,85 +51,94 @@ function App() {
       case 'stock-alert':
         return <StockAlert />
       default:
-        return <Billing />
+        return <Dashboard />
     }
   }
 
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'calendar', label: 'Calendar', icon: '📅' },
+    { id: 'billing', label: 'New Bill', icon: '🧾' },
+    { id: 'inventory', label: 'Drugs', icon: '💊' },
+    { id: 'activity', label: 'Activity', icon: '📈' },
+    { id: 'transactions', label: 'Transactions', icon: '💳' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'analytics', label: 'Analytics', icon: '📊' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'help', label: 'Help', icon: '❓' },
+  ]
+
   return (
-    <div className="container">
-      {/* Header */}
-      <header className="header">
-        <div className="header-content">
-          <div className="pharmacy-info">
-            <div className="pharmacy-logo">
-              💊
-            </div>
-            <div>
-              <div className="pharmacy-name">AISHWARYA PHARMACY</div>
-              <div className="contact-info">PH.no - 9952506050</div>
-              <div className="pharmacy-address">123 Main Street, City - 600001</div>
-            </div>
-          </div>
-          <div className="gst-info">
-            <div>GSTIN: 33AAAPL1234C1ZV</div>
-            <div style={{ 
-              marginTop: '10px', 
-              fontSize: '12px',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              backgroundColor: backendStatus === 'connected' ? 'rgba(39, 174, 96, 0.2)' : 
-                              backendStatus === 'error' ? 'rgba(231, 76, 60, 0.2)' : 
-                              'rgba(241, 196, 15, 0.2)',
-              color: backendStatus === 'connected' ? '#27ae60' : 
-                     backendStatus === 'error' ? '#e74c3c' : 
-                     '#f1c40f'
-            }}>
-              {backendStatus === 'connected' ? '🟢 Backend Connected' : 
-               backendStatus === 'error' ? '🔴 Backend Offline' : 
-               '🟡 Checking Backend...'}
-            </div>
-          </div>
+    <div className="app-container">
+      {/* Sidebar Navigation */}
+      <aside className="sidebar">
+        <div className="sidebar-header">
+          <div className="logo">P</div>
+          <div className="brand-name">Pharmax</div>
         </div>
-      </header>
+        
+        <nav>
+          <ul className="nav-menu">
+            {navItems.map(item => (
+              <li key={item.id} className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === item.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(item.id)}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
 
-      {/* Navigation Tabs */}
-      <nav className="nav-tabs">
-        <button 
-          className={`nav-tab ${activeTab === 'billing' ? 'active' : ''}`}
-          onClick={() => setActiveTab('billing')}
-        >
-          💳 Billing
-        </button>
-        <button 
-          className={`nav-tab ${activeTab === 'purchase' ? 'active' : ''}`}
-          onClick={() => setActiveTab('purchase')}
-        >
-          📦 Purchases
-        </button>
-        <button 
-          className={`nav-tab ${activeTab === 'stock-alert' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stock-alert')}
-        >
-          ⚠️ Stock Alerts
-        </button>
-        <button 
-          className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          📊 Dashboard
-        </button>
-      </nav>
+      {/* Main Content Area */}
+      <main className="main-content">
+        {/* Top Header */}
+        <header className="top-header">
+          <div className="search-bar">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search medicines/orders..."
+            />
+          </div>
+          
+          <div className="header-actions">
+            <input
+              type="date"
+              className="date-picker"
+              value={currentDate}
+              readOnly
+            />
+            
+            <button className="notification-btn">
+              🔔
+              <span className="notification-badge"></span>
+            </button>
+            
+            <div className="user-profile">
+              <div className="user-avatar">MT</div>
+              <span className="user-name">Mason Taylor</span>
+            </div>
+            
+            <div className={`connection-status ${backendStatus}`}>
+              <span className="status-dot"></span>
+              {backendStatus === 'connected' ? 'Connected' : 
+               backendStatus === 'error' ? 'Offline' : 
+               'Checking...'}
+            </div>
+          </div>
+        </header>
 
-      {/* Main Content */}
-      <main>
-        {renderActiveComponent()}
+        {/* Content Area */}
+        <div className="content">
+          {renderActiveComponent()}
+        </div>
       </main>
-
-      {/* Footer */}
-      <footer className="footer">
-        <div className="footer-text">Thank you for choosing AISHWARYA PHARMACY</div>
-        <div className="footer-contact">PH.no - 9952506050</div>
-      </footer>
     </div>
   )
 }

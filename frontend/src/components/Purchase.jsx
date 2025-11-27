@@ -30,7 +30,7 @@ const Purchase = () => {
             const orderDate = new Date(order.createdAt)
             return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear
           })
-          .reduce((sum, order) => sum + order.totalAmount, 0)
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
         
         setStats({
           pendingOrders,
@@ -54,14 +54,9 @@ const Purchase = () => {
 
   if (loading) {
     return (
-      <div style={{ 
-        background: 'white', 
-        padding: '30px', 
-        borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-        textAlign: 'center'
-      }}>
-        <h2>Loading purchase data...</h2>
+      <div className="loading">
+        <div className="spinner"></div>
+        Loading purchase data...
       </div>
     )
   }
@@ -69,125 +64,110 @@ const Purchase = () => {
   if (error) {
     return (
       <div style={{ 
-        background: 'white', 
+        background: '#16213e', 
         padding: '30px', 
-        borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        borderRadius: '12px', 
+        border: '1px solid #0f3460',
         textAlign: 'center'
       }}>
-        <h2>Error</h2>
-        <p>{error}</p>
+        <h2 style={{ color: '#e74c3c', marginBottom: '16px' }}>Error</h2>
+        <p style={{ color: '#b8bcc8' }}>{error}</p>
       </div>
     )
   }
+
   return (
-    <div style={{ 
-      background: 'white', 
-      padding: '30px', 
-      borderRadius: '16px', 
-      boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-    }}>
-      <h2 style={{ marginBottom: '25px', color: '#333' }}>📦 Purchase Management</h2>
+    <div>
+      <h2 style={{ marginBottom: '24px', color: '#ffffff' }}>📦 Purchase Management</h2>
       
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '20px',
-        marginBottom: '30px'
-      }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.pendingOrders}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Pending Orders</div>
+      {/* Stats Cards */}
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Pending Orders</div>
+            <div className="metric-icon outstock">📋</div>
+          </div>
+          <div className="metric-value">{stats.pendingOrders}</div>
+          <div className="metric-trend trend-up">
+            <span>📊</span>
+            <span>Awaiting Approval</span>
+          </div>
         </div>
         
-        <div style={{
-          background: 'linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>₹{stats.thisMonthPurchases.toLocaleString()}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>This Month Purchases</div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">This Month Purchases</div>
+            <div className="metric-icon sales">💰</div>
+          </div>
+          <div className="metric-value">₹{stats.thisMonthPurchases.toLocaleString()}</div>
+          <div className="metric-trend trend-up">
+            <span>↑</span>
+            <span>+12%</span>
+          </div>
         </div>
       </div>
 
       {/* Purchase Orders Table */}
-      <div style={{ marginBottom: '30px' }}>
-        <h3 style={{ marginBottom: '15px', color: '#333' }}>📋 Recent Purchase Orders</h3>
-        <div style={{
-          background: '#f8f9fa',
-          borderRadius: '12px',
-          overflow: 'hidden'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#e9ecef' }}>
-                <th style={{ padding: '15px', textAlign: 'left' }}>Supplier</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Invoice #</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Items</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Total Amount</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {purchaseOrders.length === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>
-                    📦 No purchase orders found
-                  </td>
-                </tr>
-              ) : (
-                purchaseOrders.slice(0, 10).map(order => (
-                  <tr key={order._id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                    <td style={{ padding: '15px', fontWeight: '500' }}>{order.supplierName}</td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>{order.supplierInvoiceNumber}</td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>{order.items.length}</td>
-                    <td style={{ padding: '15px', textAlign: 'center', fontWeight: '600' }}>
-                      ₹{order.totalAmount.toLocaleString()}
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <span style={{
-                        background: order.status === 'pending' ? '#f39c12' : 
-                                     order.status === 'received' ? '#27ae60' : '#e74c3c',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        {order.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      <div className="activity-section">
+        <div className="section-header">
+          <h3 className="section-title">Recent Purchase Orders</h3>
+          <div className="section-actions">
+            <button className="view-all-btn">Create New Order</button>
+          </div>
         </div>
+        
+        <table className="activity-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Supplier</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {purchaseOrders.slice(0, 10).map((order, index) => (
+              <tr key={index}>
+                <td className="order-id">#{order.orderId || `PO${1000 + index}`}</td>
+                <td>{order.supplierName || 'Medical Supplier'}</td>
+                <td>{new Date(order.createdAt).toLocaleDateString('en-IN')}</td>
+                <td>₹{(order.totalAmount || 0).toLocaleString()}</td>
+                <td>
+                  <span className={`status-badge ${order.status || 'pending'}`}>
+                    {order.status || 'pending'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {purchaseOrders.length === 0 && (
+              <tr>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#b8bcc8' }}>
+                  No purchase orders found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
-      <div style={{
-        background: '#d1ecf1',
-        border: '2px solid #bee5eb',
-        borderRadius: '12px',
-        padding: '20px',
-        textAlign: 'center'
-      }}>
-        <h4 style={{ color: '#0c5460', marginBottom: '10px' }}>💡 Purchase Management</h4>
-        <p style={{ color: '#0c5460', margin: 0 }}>
-          Track supplier orders, manage inventory levels, and maintain optimal stock.
-        </p>
+      {/* Quick Actions */}
+      <div className="analytics-section">
+        <h3 className="panel-title">Quick Actions</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <button className="btn btn-primary">
+            ➕ New Purchase Order
+          </button>
+          <button className="btn btn-secondary">
+            📊 Inventory Report
+          </button>
+          <button className="btn btn-secondary">
+            📋 Supplier List
+          </button>
+          <button className="btn btn-secondary">
+            📈 Purchase Analytics
+          </button>
+        </div>
       </div>
     </div>
   )
