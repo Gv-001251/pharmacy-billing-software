@@ -56,26 +56,23 @@ const StockAlert = () => {
     return () => clearInterval(interval)
   }, [])
 
-  const getStatusColor = (status) => {
-    return status === 'critical' ? '#e74c3c' : '#f39c12'
-  }
-
   const getDaysLeftColor = (days) => {
     if (days <= 15) return '#e74c3c'
-    if (days <= 30) return '#f39c12'
-    return '#27ae60'
+    if (days <= 30) return '#f1c40f'
+    return '#00d084'
+  }
+
+  const getExpirationBadge = (days) => {
+    if (days <= 15) return 'critical'
+    if (days <= 30) return 'warning'
+    return 'notice'
   }
 
   if (loading) {
     return (
-      <div style={{ 
-        background: 'white', 
-        padding: '30px', 
-        borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-        textAlign: 'center'
-      }}>
-        <h2>Loading stock alerts...</h2>
+      <div className="loading">
+        <div className="spinner"></div>
+        Loading stock alerts...
       </div>
     )
   }
@@ -83,201 +80,168 @@ const StockAlert = () => {
   if (error) {
     return (
       <div style={{ 
-        background: 'white', 
+        background: '#16213e', 
         padding: '30px', 
-        borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        borderRadius: '12px', 
+        border: '1px solid #0f3460',
         textAlign: 'center'
       }}>
-        <h2>Error</h2>
-        <p>{error}</p>
+        <h2 style={{ color: '#e74c3c', marginBottom: '16px' }}>Error</h2>
+        <p style={{ color: '#b8bcc8' }}>{error}</p>
       </div>
     )
   }
 
   return (
-    <div style={{ 
-      background: 'white', 
-      padding: '30px', 
-      borderRadius: '16px', 
-      boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-    }}>
-      <h2 style={{ marginBottom: '25px', color: '#333' }}>⚠️ Stock Alerts</h2>
+    <div>
+      <h2 style={{ marginBottom: '24px', color: '#ffffff' }}>⚠️ Stock Alerts</h2>
       
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '20px',
-        marginBottom: '30px'
-      }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{lowStockItems.length}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Low Stock Items</div>
+      {/* Alert Summary Cards */}
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Low Stock Items</div>
+            <div className="metric-icon outstock">📦</div>
+          </div>
+          <div className="metric-value">{lowStockItems.length}</div>
+          <div className="metric-trend trend-down">
+            <span>⚠️</span>
+            <span>Needs Restock</span>
+          </div>
         </div>
         
-        <div style={{
-          background: 'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{expiringSoon.length}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Expiring Soon</div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Expiring Soon</div>
+            <div className="metric-icon expired">🕒</div>
+          </div>
+          <div className="metric-value">{expiringSoon.length}</div>
+          <div className="metric-trend trend-down">
+            <span>⏰</span>
+            <span>Within 60 Days</span>
+          </div>
+        </div>
+        
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Critical Items</div>
+            <div className="metric-icon outstock">🚨</div>
+          </div>
+          <div className="metric-value">
+            {lowStockItems.filter(item => item.stock <= 10).length + expiringSoon.filter(item => item.daysLeft <= 15).length}
+          </div>
+          <div className="metric-trend trend-down">
+            <span>🔴</span>
+            <span>Immediate Action</span>
+          </div>
         </div>
       </div>
 
-      {/* Low Stock Alerts */}
-      <div style={{ marginBottom: '30px' }}>
-        <h3 style={{ marginBottom: '15px', color: '#e74c3c' }}>🔴 Low Stock Items</h3>
-        <div style={{
-          background: '#f8f9fa',
-          borderRadius: '12px',
-          overflow: 'hidden'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#e9ecef' }}>
-                <th style={{ padding: '15px', textAlign: 'left' }}>Medicine Name</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Current Stock</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Min Stock</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '15px', textAlign: 'center' }}>Action</th>
+      {/* Low Stock Items */}
+      <div className="activity-section">
+        <div className="section-header">
+          <h3 className="section-title">Low Stock Items</h3>
+          <div className="section-actions">
+            <button className="view-all-btn">Order Now</button>
+          </div>
+        </div>
+        
+        <table className="activity-table">
+          <thead>
+            <tr>
+              <th>Medicine Name</th>
+              <th>Current Stock</th>
+              <th>Min Stock</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lowStockItems.slice(0, 10).map((item, index) => (
+              <tr key={index}>
+                <td>{item.name}</td>
+                <td>{item.stock}</td>
+                <td>{item.minStock || 10}</td>
+                <td>
+                  <span className={`status-badge ${item.stock <= 10 ? 'cancelled' : 'pending'}`}>
+                    {item.stock <= 10 ? 'Critical' : 'Low'}
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {lowStockItems.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>
-                    ✅ No low stock items found
-                  </td>
-                </tr>
-              ) : (
-                lowStockItems.map(item => (
-                  <tr key={item._id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                    <td style={{ padding: '15px', fontWeight: '500' }}>{item.name}</td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <span style={{ 
-                        color: item.quantity < item.minStockLevel / 2 ? '#e74c3c' : '#f39c12',
-                        fontWeight: 'bold'
-                      }}>
-                        {item.quantity}
-                      </span>
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>{item.minStockLevel}</td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <span style={{
-                        background: item.quantity < item.minStockLevel / 2 ? '#e74c3c' : '#f39c12',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        {item.quantity < item.minStockLevel / 2 ? 'CRITICAL' : 'WARNING'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <button style={{
-                        background: '#667eea',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}>
-                        Order Now
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Expiring Soon */}
-      <div>
-        <h3 style={{ marginBottom: '15px', color: '#f39c12' }}>🟡 Expiring Soon</h3>
-        <div style={{
-          background: '#fef9e7',
-          border: '2px solid #f39c12',
-          borderRadius: '12px',
-          padding: '20px'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
+            ))}
+            {lowStockItems.length === 0 && (
               <tr>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Medicine Name</th>
-                <th style={{ padding: '12px', textAlign: 'center' }}>Batch</th>
-                <th style={{ padding: '12px', textAlign: 'center' }}>Expiry Date</th>
-                <th style={{ padding: '12px', textAlign: 'center' }}>Days Left</th>
-                <th style={{ padding: '12px', textAlign: 'center' }}>Action</th>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#b8bcc8' }}>
+                  No low stock items found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {expiringSoon.length === 0 ? (
-                <tr>
-                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>
-                    ✅ No items expiring in the next 60 days
-                  </td>
-                </tr>
-              ) : (
-                expiringSoon.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #fdeaa8' }}>
-                    <td style={{ padding: '12px', fontWeight: '500' }}>{item.medicine}</td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>{item.batch}</td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>{item.expiryDate}</td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <span style={{
-                        color: getDaysLeftColor(item.daysLeft),
-                        fontWeight: 'bold'
-                      }}>
-                        {item.daysLeft} days
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button style={{
-                        background: '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}>
-                        Return/Sell
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+            )}
+          </tbody>
+        </table>
       </div>
 
-      <div style={{
-        background: '#d1ecf1',
-        border: '2px solid #bee5eb',
-        borderRadius: '12px',
-        padding: '20px',
-        marginTop: '30px',
-        textAlign: 'center'
-      }}>
-        <h4 style={{ color: '#0c5460', marginBottom: '10px' }}>💡 Alert Settings</h4>
-        <p style={{ color: '#0c5460', fontSize: '14px' }}>
-          Configure custom alert thresholds for stock levels and expiry dates. 
-          Get notified via email or SMS when items need attention.
-        </p>
+      {/* Expiring Soon Items */}
+      <div className="activity-section">
+        <div className="section-header">
+          <h3 className="section-title">Expiring Soon</h3>
+          <div className="section-actions">
+            <button className="view-all-btn">Apply Discount</button>
+          </div>
+        </div>
+        
+        <table className="activity-table">
+          <thead>
+            <tr>
+              <th>Medicine Name</th>
+              <th>Batch Number</th>
+              <th>Expiry Date</th>
+              <th>Days Left</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            {expiringSoon.slice(0, 10).map((item, index) => (
+              <tr key={index}>
+                <td>{item.medicine}</td>
+                <td>{item.batch}</td>
+                <td>{item.expiryDate}</td>
+                <td style={{ color: getDaysLeftColor(item.daysLeft) }}>
+                  {item.daysLeft} days
+                </td>
+                <td>
+                  <span className={`status-badge ${getExpirationBadge(item.daysLeft)}`}>
+                    {getExpirationBadge(item.daysLeft)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {expiringSoon.length === 0 && (
+              <tr>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#b8bcc8' }}>
+                  No items expiring soon
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="analytics-section">
+        <h3 className="panel-title">Quick Actions</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <button className="btn btn-primary">
+            📦 Create Purchase Order
+          </button>
+          <button className="btn btn-secondary">
+            🏷️ Apply Discounts
+          </button>
+          <button className="btn btn-secondary">
+            📊 Stock Report
+          </button>
+          <button className="btn btn-secondary">
+            ⚙️ Alert Settings
+          </button>
+        </div>
       </div>
     </div>
   )

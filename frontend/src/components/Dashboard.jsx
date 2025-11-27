@@ -8,8 +8,11 @@ const Dashboard = () => {
     lowStockItems: 0,
     expiringSoon: 0
   })
+  const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [chartType, setChartType] = useState('sales')
+  const [period, setPeriod] = useState('30D')
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -46,12 +49,27 @@ const Dashboard = () => {
             return daysLeft > 0 && daysLeft <= 60
           })
         
+        // Generate recent activity data
+        const activity = bills.slice(0, 10).map((bill, index) => ({
+          id: `#${1234 + index}`,
+          customerName: bill.customerName || `Customer ${index + 1}`,
+          customerPhone: bill.customerPhone || '9876543210',
+          time: new Date(bill.createdAt).toLocaleTimeString('en-IN', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          amount: bill.totals.total || 0,
+          status: Math.random() > 0.3 ? 'delivered' : Math.random() > 0.5 ? 'pending' : 'cancelled'
+        }))
+        
         setStats({
           todaySales,
           billsCreated: bills.length,
           lowStockItems: lowStockItems.length,
           expiringSoon: expiringItems.length
         })
+        
+        setRecentActivity(activity)
         setLoading(false)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -69,14 +87,9 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div style={{ 
-        background: 'white', 
-        padding: '30px', 
-        borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-        textAlign: 'center'
-      }}>
-        <h2>Loading dashboard...</h2>
+      <div className="loading">
+        <div className="spinner"></div>
+        Loading dashboard...
       </div>
     )
   }
@@ -84,89 +97,167 @@ const Dashboard = () => {
   if (error) {
     return (
       <div style={{ 
-        background: 'white', 
+        background: '#16213e', 
         padding: '30px', 
-        borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        borderRadius: '12px', 
+        border: '1px solid #0f3460',
         textAlign: 'center'
       }}>
-        <h2>Error</h2>
-        <p>{error}</p>
-        <p>Please check if the backend is running.</p>
+        <h2 style={{ color: '#e74c3c', marginBottom: '16px' }}>Error</h2>
+        <p style={{ color: '#b8bcc8' }}>{error}</p>
+        <p style={{ color: '#b8bcc8', marginTop: '8px' }}>Please check if the backend is running.</p>
       </div>
     )
   }
 
   return (
-    <div style={{ 
-      background: 'white', 
-      padding: '30px', 
-      borderRadius: '16px', 
-      boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-    }}>
-      <h2 style={{ marginBottom: '25px', color: '#333' }}>📊 Dashboard</h2>
-      
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-        gap: '20px',
-        marginBottom: '30px'
-      }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>₹{stats.todaySales.toLocaleString()}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Today's Sales</div>
+    <div>
+      {/* Metrics Cards */}
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Total Profit</div>
+            <div className="metric-icon profit">₹</div>
+          </div>
+          <div className="metric-value">₹{(stats.todaySales * 0.22).toLocaleString()}</div>
+          <div className="metric-trend trend-up">
+            <span>↑</span>
+            <span>+17%</span>
+          </div>
         </div>
         
-        <div style={{
-          background: 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.billsCreated}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Bills Created</div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Total Sales</div>
+            <div className="metric-icon sales">💰</div>
+          </div>
+          <div className="metric-value">₹{stats.todaySales.toLocaleString()}</div>
+          <div className="metric-trend trend-up">
+            <span>↑</span>
+            <span>+17%</span>
+          </div>
         </div>
         
-        <div style={{
-          background: 'linear-gradient(135deg, #f39c12 0%, #e67e22 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.lowStockItems}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Low Stock Items</div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Out of Stock</div>
+            <div className="metric-icon outstock">⚠️</div>
+          </div>
+          <div className="metric-value">{stats.lowStockItems}</div>
+          <div className="metric-trend trend-down">
+            <span>↑</span>
+            <span>+5%</span>
+          </div>
         </div>
         
-        <div style={{
-          background: 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)',
-          color: 'white',
-          padding: '25px',
-          borderRadius: '12px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '36px', fontWeight: 'bold', marginBottom: '10px' }}>{stats.expiringSoon}</div>
-          <div style={{ fontSize: '16px', opacity: 0.9 }}>Expiring Soon</div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <div className="metric-title">Expired</div>
+            <div className="metric-icon expired">🕒</div>
+          </div>
+          <div className="metric-value">{stats.expiringSoon}</div>
+          <div className="metric-trend trend-down">
+            <span>↓</span>
+            <span>-2%</span>
+          </div>
         </div>
       </div>
 
-      <div style={{
-        background: '#f8f9fa',
-        padding: '20px',
-        borderRadius: '12px',
-        textAlign: 'center',
-        color: '#666'
-      }}>
-        <h3 style={{ marginBottom: '15px' }}>📈 Analytics Dashboard</h3>
-        <p>Detailed analytics and reports will be available here.</p>
-        <p style={{ marginTop: '10px', fontSize: '14px' }}>Features: Sales trends, inventory reports, customer insights, and more.</p>
+      {/* Recent Activity Table */}
+      <div className="activity-section">
+        <div className="section-header">
+          <h3 className="section-title">Recent Activity</h3>
+          <div className="section-actions">
+            <button className="view-all-btn">View All</button>
+          </div>
+        </div>
+        
+        <table className="activity-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Order ID</th>
+              <th>Time</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentActivity.map((activity, index) => (
+              <tr key={index}>
+                <td>
+                  <div className="customer-info">
+                    <div className="customer-avatar">
+                      {activity.customerName.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="customer-details">
+                      <div className="customer-name">{activity.customerName}</div>
+                      <div className="customer-phone">{activity.customerPhone}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="order-id">{activity.id}</td>
+                <td>{activity.time}</td>
+                <td>₹{activity.amount.toLocaleString()}</td>
+                <td>
+                  <span className={`status-badge ${activity.status}`}>
+                    {activity.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Analytics Chart */}
+      <div className="analytics-section">
+        <div className="chart-controls">
+          <h3 className="chart-title">Sales Analytics</h3>
+          <div className="chart-options">
+            <div className="chart-toggle">
+              <button 
+                className={`toggle-btn ${chartType === 'sales' ? 'active' : ''}`}
+                onClick={() => setChartType('sales')}
+              >
+                Total Sell
+              </button>
+              <button 
+                className={`toggle-btn ${chartType === 'drugs' ? 'active' : ''}`}
+                onClick={() => setChartType('drugs')}
+              >
+                Drugs
+              </button>
+            </div>
+            
+            <div className="period-selector">
+              <button 
+                className={`period-btn ${period === '7D' ? 'active' : ''}`}
+                onClick={() => setPeriod('7D')}
+              >
+                7D
+              </button>
+              <button 
+                className={`period-btn ${period === '30D' ? 'active' : ''}`}
+                onClick={() => setPeriod('30D')}
+              >
+                30D
+              </button>
+              <button 
+                className={`period-btn ${period === 'All' ? 'active' : ''}`}
+                onClick={() => setPeriod('All')}
+              >
+                All
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="chart-container">
+          📊 Interactive sales chart will be displayed here
+          <br />
+          <small>Showing {chartType} data for {period} period</small>
+        </div>
       </div>
     </div>
   )

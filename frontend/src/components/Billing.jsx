@@ -14,7 +14,8 @@ const Billing = () => {
       quantity: 1,
       mrp: 0,
       gst: 0,
-      amount: 0
+      amount: 0,
+      stock: 50
     }
   ])
   const [showSuccess, setShowSuccess] = useState(false)
@@ -129,6 +130,7 @@ const Billing = () => {
     handleMedicineChange(currentEditingId, 'batch', medicine.batch || '')
     handleMedicineChange(currentEditingId, 'mrp', medicine.mrp || 0)
     handleMedicineChange(currentEditingId, 'gst', medicine.gst || 0)
+    handleMedicineChange(currentEditingId, 'stock', medicine.stock || 50)
     setShowSuggestions(false)
     setCurrentEditingId(null)
     setFilteredSuggestions([])
@@ -141,7 +143,7 @@ const Billing = () => {
         const gstPercent = parseFloat(medicine.gst) || 0
         const baseAmount = qty * price
         const gstAmount = baseAmount * (gstPercent / 100)
-        return { ...med, name: medicine.name, batch: medicine.batch || '', mrp: medicine.mrp || 0, gst: medicine.gst || 0, amount: baseAmount + gstAmount }
+        return { ...med, name: medicine.name, batch: medicine.batch || '', mrp: medicine.mrp || 0, gst: medicine.gst || 0, stock: medicine.stock || 50, amount: baseAmount + gstAmount }
       }
       return med
     })
@@ -156,7 +158,8 @@ const Billing = () => {
       quantity: 1,
       mrp: 0,
       gst: 0,
-      amount: 0
+      amount: 0,
+      stock: 50
     }
     setMedicines([...medicines, newMedicine])
   }
@@ -165,6 +168,26 @@ const Billing = () => {
     if (medicines.length > 1) {
       setMedicines(medicines.filter(med => med.id !== id))
     }
+  }
+
+  const updateQuantity = (id, delta) => {
+    const updatedMedicines = medicines.map(med => {
+      if (med.id === id) {
+        const newQty = Math.max(1, (parseFloat(med.quantity) || 0) + delta)
+        const updatedMed = { ...med, quantity: newQty }
+        
+        // Recalculate amount
+        const price = parseFloat(updatedMed.mrp) || 0
+        const gstPercent = parseFloat(updatedMed.gst) || 0
+        const baseAmount = newQty * price
+        const gstAmount = baseAmount * (gstPercent / 100)
+        updatedMed.amount = baseAmount + gstAmount
+        
+        return updatedMed
+      }
+      return med
+    })
+    setMedicines(updatedMedicines)
   }
 
   // Calculate totals
@@ -203,390 +226,334 @@ const Billing = () => {
       return
     }
 
-    const billData = {
-      customer: { name: customerName, phone: customerPhone },
-      medicines: medicines.filter(med => med.name.trim() !== ''),
-      totals: {
-        subtotal: calculateSubtotal(),
-        gst: calculateGST(),
-        total: calculateTotal()
-      },
-      paymentMode
-    }
-
     try {
-      // Save to backend
+      const billData = {
+        customerName,
+        customerPhone,
+        paymentMode,
+        medicines: medicines.filter(med => med.name.trim() !== ''),
+        totals: {
+          subtotal: calculateSubtotal(),
+          gst: calculateGST(),
+          total: calculateTotal()
+        },
+        createdAt: new Date().toISOString()
+      }
+
       const response = await pharmacyAPI.billing.create(billData)
       
-      // Show success animation
-      setShowSuccess(true)
-      setTimeout(() => {
-        setShowSuccess(false)
-      }, 2000)
-
-      console.log('Bill saved successfully:', response.data)
-
-      // Reset form after successful save
-      setTimeout(() => {
-        resetForm()
-      }, 1000)
+      if (response.data.success) {
+        setShowSuccess(true)
+        setTimeout(() => {
+          setShowSuccess(false)
+          // Reset form
+          setCustomerName('')
+          setCustomerPhone('')
+          setMedicines([{
+            id: 1,
+            name: '',
+            batch: '',
+            quantity: 1,
+            mrp: 0,
+            gst: 0,
+            amount: 0,
+            stock: 50
+          }])
+        }, 3000)
+      }
     } catch (error) {
       console.error('Error saving bill:', error)
-      alert('Error saving bill. Please check if the backend is running and try again.')
+      alert('Failed to save bill. Please try again.')
     }
   }
 
-  const resetForm = () => {
-    setCustomerName('')
-    setCustomerPhone('')
-    setPhoneError('')
-    setPaymentMode('cash')
-    setMedicines([{
-      id: 1,
-      name: '',
-      batch: '',
-      quantity: 1,
-      mrp: 0,
-      gst: 0,
-      amount: 0
-    }])
-  }
-
-  const handleCancel = () => {
-    if (window.confirm('Are you sure you want to clear this bill?')) {
-      resetForm()
-    }
-  }
-
-  // Keyboard navigation
-  const handleKeyDown = (e, rowIndex, field) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      // Move to next field or next row
-      const fields = ['name', 'batch', 'quantity', 'mrp', 'gst']
-      const currentFieldIndex = fields.indexOf(field)
-      
-      if (currentFieldIndex < fields.length - 1) {
-        // Move to next field in same row
-        const nextField = fields[currentFieldIndex + 1]
-        const nextInput = document.querySelector(`input[data-row="${rowIndex}"][data-field="${nextField}"]`)
-        if (nextInput) nextInput.focus()
-      } else if (rowIndex < medicines.length - 1) {
-        // Move to first field of next row
-        const nextInput = document.querySelector(`input[data-row="${rowIndex + 1}"][data-field="name"]`)
-        if (nextInput) nextInput.focus()
-      }
-    } else if (e.key === 'ArrowDown' && rowIndex < medicines.length - 1) {
-      e.preventDefault()
-      const nextInput = document.querySelector(`input[data-row="${rowIndex + 1}"][data-field="${field}"]`)
-      if (nextInput) nextInput.focus()
-    } else if (e.key === 'ArrowUp' && rowIndex > 0) {
-      e.preventDefault()
-      const prevInput = document.querySelector(`input[data-row="${rowIndex - 1}"][data-field="${field}"]`)
-      if (prevInput) prevInput.focus()
-    }
-  }
+  const subtotal = calculateSubtotal()
+  const gst = calculateGST()
+  const total = calculateTotal()
 
   return (
-    <div className={`billing-container ${showSuccess ? 'success-animation' : ''}`}>
-      <h2 style={{ marginBottom: '25px', color: '#333' }}>💳 New Bill</h2>
-      
-      {/* Customer Information */}
-      <div className="customer-section">
-        <div className="form-group">
-          <label htmlFor="customerName">Customer Name *</label>
-          <input
-            id="customerName"
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="Enter customer name"
-          />
+    <div className="billing-container">
+      {/* Left Panel - Medicine Entry */}
+      <div className="billing-panel">
+        <h2 className="panel-title">New Bill</h2>
+        
+        {/* Customer Information */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+          <div className="form-group">
+            <label className="form-label">Customer Name</label>
+            <input
+              type="text"
+              className="form-input"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Enter customer name"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Phone Number</label>
+            <input
+              type="tel"
+              className="form-input"
+              value={customerPhone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              placeholder="9876543210"
+              maxLength={10}
+            />
+            {phoneError && <div style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}>{phoneError}</div>}
+          </div>
         </div>
-        <div className="form-group">
-          <label htmlFor="customerPhone">Phone Number *</label>
-          <input
-            id="customerPhone"
-            type="tel"
-            value={customerPhone}
-            onChange={(e) => handlePhoneChange(e.target.value)}
-            placeholder="Enter 10-digit mobile number"
-            className={phoneError ? 'error' : ''}
-            maxLength={10}
-          />
-          {phoneError && <span className="error-message">{phoneError}</span>}
+
+        {/* Medicine List */}
+        <div className="medicine-list">
+          {medicines.map((medicine, index) => (
+            <div key={medicine.id} className="medicine-item">
+              <div className="medicine-header">
+                <input
+                  type="text"
+                  className="form-input"
+                  value={medicine.name}
+                  onChange={(e) => handleMedicineNameChange(medicine.id, e.target.value)}
+                  placeholder="Search medicine (Paracetamol 650mg, Azithromycin 500mg...)"
+                  style={{ flex: 1 }}
+                />
+                {medicines.length > 1 && (
+                  <button
+                    className="quantity-btn"
+                    onClick={() => removeMedicineRow(medicine.id)}
+                    style={{ marginLeft: '8px' }}
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+              
+              {/* Suggestions Dropdown */}
+              {showSuggestions && currentEditingId === medicine.id && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: '#16213e',
+                  border: '1px solid #0f3460',
+                  borderRadius: '8px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 1000,
+                  marginTop: '4px'
+                }}>
+                  {loadingSuggestions ? (
+                    <div style={{ padding: '12px', textAlign: 'center', color: '#b8bcc8' }}>
+                      Loading...
+                    </div>
+                  ) : filteredSuggestions.length > 0 ? (
+                    filteredSuggestions.map((suggestion, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => selectSuggestion(suggestion)}
+                        style={{
+                          padding: '12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #0f3460',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = 'rgba(0, 208, 132, 0.1)'}
+                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                      >
+                        <div style={{ fontWeight: '500', color: '#ffffff' }}>{suggestion.name}</div>
+                        <div style={{ fontSize: '12px', color: '#b8bcc8' }}>
+                          ₹{suggestion.mrp}/tab | GST: {suggestion.gst}% | Batch: {suggestion.batch}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '12px', textAlign: 'center', color: '#b8bcc8' }}>
+                      No medicines found
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="medicine-details">
+                <div className="form-group">
+                  <label className="form-label">Price (₹)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={medicine.mrp}
+                    onChange={(e) => handleMedicineChange(medicine.id, 'mrp', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Quantity</label>
+                  <div className="quantity-control">
+                    <button
+                      className="quantity-btn"
+                      onClick={() => updateQuantity(medicine.id, -1)}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      className="quantity-input"
+                      value={medicine.quantity}
+                      onChange={(e) => handleMedicineChange(medicine.id, 'quantity', parseFloat(e.target.value) || 1)}
+                      min="1"
+                    />
+                    <button
+                      className="quantity-btn"
+                      onClick={() => updateQuantity(medicine.id, 1)}
+                    >
+                      +
+                    </button>
+                    <span className="stock-indicator">{medicine.stock} avail</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+          <button className="btn btn-primary" onClick={addMedicineRow}>
+            ➕ Add to Cart
+          </button>
+          <button className="btn btn-danger" onClick={() => {
+            setMedicines([{
+              id: 1,
+              name: '',
+              batch: '',
+              quantity: 1,
+              mrp: 0,
+              gst: 0,
+              amount: 0,
+              stock: 50
+            }])
+          }}>
+            🗑️ Clear
+          </button>
         </div>
       </div>
 
-      {/* Medicine Table */}
-      <div className="medicine-table-section">
-        <h3 className="section-title">📋 Medicines</h3>
-        <table className="medicine-table">
+      {/* Right Panel - Cart Summary */}
+      <div className="cart-summary">
+        <h3 className="panel-title">Cart Summary</h3>
+        
+        <table className="cart-table">
           <thead>
             <tr>
-              <th style={{ width: '25%' }}>Medicine Name</th>
-              <th style={{ width: '15%' }}>Batch</th>
-              <th style={{ width: '10%' }}>Qty</th>
-              <th style={{ width: '15%' }}>MRP (₹)</th>
-              <th style={{ width: '10%' }}>GST %</th>
-              <th style={{ width: '15%' }}>Amount (₹)</th>
-              <th style={{ width: '10%' }}>Action</th>
+              <th>Drug Name</th>
+              <th>Qty</th>
+              <th>Price/Unit (₹)</th>
+              <th>Total (₹)</th>
             </tr>
           </thead>
           <tbody>
-            {medicines.map((medicine, index) => (
+            {medicines.filter(med => med.name.trim() !== '').map((medicine) => (
               <tr key={medicine.id}>
-                <td style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    value={medicine.name}
-                    onChange={(e) => handleMedicineNameChange(medicine.id, e.target.value)}
-                    placeholder="Medicine name"
-                    data-row={index}
-                    data-field="name"
-                    onKeyDown={(e) => handleKeyDown(e, index, 'name')}
-                  />
-                  {showSuggestions && currentEditingId === medicine.id && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      background: 'white',
-                      border: '1px solid #e1e8ed',
-                      borderTop: 'none',
-                      borderRadius: '0 0 6px 6px',
-                      maxHeight: '250px',
-                      overflowY: 'auto',
-                      zIndex: 1000,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
-                      {loadingSuggestions && (
-                        <div style={{
-                          padding: '12px',
-                          textAlign: 'center',
-                          color: '#667eea',
-                          fontSize: '14px'
-                        }}>
-                          Loading suggestions...
-                        </div>
-                      )}
-                      
-                      {suggestionsError && (
-                        <div style={{
-                          padding: '12px',
-                          textAlign: 'center',
-                          color: '#e74c3c',
-                          fontSize: '14px'
-                        }}>
-                          {suggestionsError}
-                        </div>
-                      )}
-                      
-                      {!loadingSuggestions && !suggestionsError && filteredSuggestions.length === 0 && medicine.name.length >= 2 && (
-                        <div style={{
-                          padding: '12px',
-                          textAlign: 'center',
-                          color: '#666',
-                          fontSize: '14px'
-                        }}>
-                          No medicines found
-                        </div>
-                      )}
-                      
-                      {filteredSuggestions.map((suggestion, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            padding: '10px 12px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            borderBottom: '1px solid #f1f3f4',
-                            backgroundColor: idx === 0 ? '#f8f9fa' : 'white'
-                          }}
-                          onClick={() => selectSuggestion(suggestion)}
-                          onMouseEnter={(e) => e.target.style.background = '#f0f7ff'}
-                          onMouseLeave={(e) => e.target.style.background = idx === 0 ? '#f8f9fa' : 'white'}
-                        >
-                          <div style={{ fontWeight: '600', color: '#2c3e50', marginBottom: '2px' }}>
-                            {suggestion.name}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Batch: {suggestion.batch || 'N/A'}</span>
-                            <span>MRP: ₹{suggestion.mrp || 0}</span>
-                            <span>GST: {suggestion.gst || 0}%</span>
-                          </div>
-                          {suggestion.manufacturer && (
-                            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>
-                              {suggestion.manufacturer}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    value={medicine.batch}
-                    onChange={(e) => handleMedicineChange(medicine.id, 'batch', e.target.value)}
-                    placeholder="Batch no."
-                    data-row={index}
-                    data-field="batch"
-                    onKeyDown={(e) => handleKeyDown(e, index, 'batch')}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={medicine.quantity}
-                    onChange={(e) => handleMedicineChange(medicine.id, 'quantity', e.target.value)}
-                    placeholder="Qty"
-                    min="1"
-                    data-row={index}
-                    data-field="quantity"
-                    onKeyDown={(e) => handleKeyDown(e, index, 'quantity')}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={medicine.mrp}
-                    onChange={(e) => handleMedicineChange(medicine.id, 'mrp', e.target.value)}
-                    placeholder="MRP"
-                    min="0"
-                    step="0.01"
-                    data-row={index}
-                    data-field="mrp"
-                    onKeyDown={(e) => handleKeyDown(e, index, 'mrp')}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={medicine.gst}
-                    onChange={(e) => handleMedicineChange(medicine.id, 'gst', e.target.value)}
-                    placeholder="GST"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    data-row={index}
-                    data-field="gst"
-                    onKeyDown={(e) => handleKeyDown(e, index, 'gst')}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    value={medicine.amount.toFixed(2)}
-                    readOnly
-                    style={{ background: '#f8f9fa', fontWeight: '600', color: '#667eea' }}
-                  />
-                </td>
-                <td>
-                  <button
-                    className="remove-row-btn"
-                    onClick={() => removeMedicineRow(medicine.id)}
-                    disabled={medicines.length === 1}
-                  >
-                    Remove
-                  </button>
-                </td>
+                <td>{medicine.name}</td>
+                <td>{medicine.quantity}</td>
+                <td>{medicine.mrp}</td>
+                <td>{(medicine.quantity * medicine.mrp).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <button className="add-medicine-btn" onClick={addMedicineRow}>
-          ➕ Add Medicine
-        </button>
-      </div>
 
-      {/* Billing Summary */}
-      <div className="billing-summary">
         <div className="summary-row">
-          <span className="summary-label">Subtotal:</span>
-          <span className="summary-value">₹{calculateSubtotal().toFixed(2)}</span>
+          <span>Subtotal:</span>
+          <span>₹{subtotal.toFixed(2)}</span>
         </div>
         <div className="summary-row">
-          <span className="summary-label">GST Amount:</span>
-          <span className="summary-value">₹{calculateGST().toFixed(2)}</span>
+          <span>GST (12%):</span>
+          <span>₹{gst.toFixed(2)}</span>
         </div>
         <div className="summary-row total">
-          <span>Total Amount:</span>
-          <span>₹{calculateTotal().toFixed(2)}</span>
+          <span>Grand Total:</span>
+          <span>₹{total.toFixed(2)}</span>
         </div>
-      </div>
+        <div className="summary-row">
+          <span>Balance Due:</span>
+          <span>₹{total.toFixed(2)}</span>
+        </div>
 
-      {/* Payment Mode */}
-      <div className="payment-section">
+        {/* Customer and Payment */}
+        <div className="form-group" style={{ marginTop: '24px' }}>
+          <label className="form-label">Customer</label>
+          <select className="form-select" value={customerName} onChange={(e) => setCustomerName(e.target.value)}>
+            <option value="">Select Customer</option>
+            <option value="Walk-in Customer">Walk-in Customer</option>
+            <option value="Rajesh Kumar">Rajesh Kumar</option>
+            <option value="Priya Sharma">Priya Sharma</option>
+          </select>
+        </div>
+
         <div className="form-group">
-          <label>Payment Mode</label>
+          <label className="form-label">Payment Method</label>
           <div className="payment-mode">
-            <label className="radio-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="radio"
-                name="paymentMode"
+                name="payment"
                 value="cash"
                 checked={paymentMode === 'cash'}
                 onChange={(e) => setPaymentMode(e.target.value)}
               />
-              <span>💵 Cash</span>
+              Cash
             </label>
-            <label className="radio-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="radio"
-                name="paymentMode"
-                value="credit"
-                checked={paymentMode === 'credit'}
+                name="payment"
+                value="upi"
+                checked={paymentMode === 'upi'}
                 onChange={(e) => setPaymentMode(e.target.value)}
               />
-              <span>💳 Credit</span>
+              UPI
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="payment"
+                value="card"
+                checked={paymentMode === 'card'}
+                onChange={(e) => setPaymentMode(e.target.value)}
+              />
+              Card
             </label>
           </div>
         </div>
-        <div className="form-group">
-          <label>Quick Actions</label>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              className="add-medicine-btn" 
-              onClick={() => window.print()}
-              style={{ background: 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)' }}
-            >
-              🖨️ Print Preview
-            </button>
+
+        {/* Action Buttons */}
+        <div className="action-buttons">
+          <button className="btn btn-secondary">
+            📄 Save Draft
+          </button>
+          <button className="btn btn-secondary">
+            🖨️ Print Receipt
+          </button>
+          <button className="btn btn-primary" onClick={handleSaveAndPrint}>
+            ✅ Complete Sale
+          </button>
+        </div>
+
+        {showSuccess && (
+          <div style={{
+            background: 'rgba(0, 208, 132, 0.2)',
+            border: '1px solid #00d084',
+            borderRadius: '8px',
+            padding: '12px',
+            marginTop: '16px',
+            textAlign: 'center',
+            color: '#00d084'
+          }}>
+            ✅ Bill saved successfully!
           </div>
-        </div>
+        )}
       </div>
-
-      {/* Action Buttons */}
-      <div className="action-buttons">
-        <button className="cancel-btn" onClick={handleCancel}>
-          ❌ Cancel
-        </button>
-        <button className="save-print-btn" onClick={handleSaveAndPrint}>
-          💾 Save & Print Invoice
-        </button>
-      </div>
-
-      {showSuccess && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)',
-          color: 'white',
-          padding: '20px 40px',
-          borderRadius: '12px',
-          fontSize: '18px',
-          fontWeight: 'bold',
-          zIndex: 10000,
-          boxShadow: '0 4px 20px rgba(46, 204, 113, 0.4)'
-        }}>
-          ✅ Bill Saved Successfully!
-        </div>
-      )}
     </div>
   )
 }
